@@ -1,0 +1,1513 @@
+openapi: 3.1.0
+info:
+  title: OSHC Comparison Platform API
+  version: 0.1.0
+  summary: MVP API contract for the OSHC comparison, checkout, admin, agent, and fulfilment portal.
+  description: >
+    Swagger/OpenAPI-compatible API specification for the OSHC comparison and purchase platform.
+    This contract is intended for frontend/backend alignment, Swagger UI review, test generation,
+    and implementation planning.
+servers:
+  - url: https://api.example.com/v1
+    description: Production placeholder
+  - url: https://staging-api.example.com/v1
+    description: Staging placeholder
+  - url: http://localhost:3000/api/v1
+    description: Local development placeholder
+tags:
+  - name: Public Quote
+  - name: Results
+  - name: Checkout
+  - name: Payments
+  - name: Admin Auth
+  - name: Admin Providers
+  - name: Admin Products
+  - name: Admin Prices
+  - name: Admin Orders
+  - name: Fulfilment
+  - name: Agents
+  - name: Reports
+  - name: Webhooks
+security:
+  - bearerAuth: []
+paths:
+  /quotes:
+    post:
+      tags: [Public Quote]
+      summary: Create a quote
+      description: Validates household and policy dates, calculates cover type, and creates a quote.
+      security: []
+      operationId: createQuote
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateQuoteRequest"
+      responses:
+        "201":
+          description: Quote created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuoteResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /quotes/{quoteId}:
+    get:
+      tags: [Public Quote]
+      summary: Get quote
+      security: []
+      operationId: getQuote
+      parameters:
+        - $ref: "#/components/parameters/QuoteId"
+      responses:
+        "200":
+          description: Quote found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuoteResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /quotes/{quoteId}/results:
+    get:
+      tags: [Results]
+      summary: Get quote results
+      description: Returns eligible policy results for a quote and creates immutable result snapshots if needed.
+      security: []
+      operationId: getQuoteResults
+      parameters:
+        - $ref: "#/components/parameters/QuoteId"
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [price_asc, provider_name_asc]
+      responses:
+        "200":
+          description: Quote results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuoteResultsResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /applications:
+    post:
+      tags: [Checkout]
+      summary: Create application draft
+      security: []
+      operationId: createApplication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateApplicationRequest"
+      responses:
+        "201":
+          description: Application draft created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /applications/{applicationId}:
+    get:
+      tags: [Checkout]
+      summary: Get application draft
+      security: []
+      operationId: getApplication
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+      responses:
+        "200":
+          description: Application draft
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Checkout]
+      summary: Update application draft
+      security: []
+      operationId: updateApplication
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateApplicationRequest"
+      responses:
+        "200":
+          description: Application draft updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /orders:
+    post:
+      tags: [Checkout]
+      summary: Create order from application
+      security: []
+      operationId: createOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderRequest"
+      responses:
+        "201":
+          description: Order created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /orders/{orderId}:
+    get:
+      tags: [Checkout]
+      summary: Get public order summary
+      description: Returns safe order summary for confirmation pages. Customer self-service lookup is post-MVP.
+      security: []
+      operationId: getOrder
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+      responses:
+        "200":
+          description: Order summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /payments/sessions:
+    post:
+      tags: [Payments]
+      summary: Create payment session
+      security: []
+      operationId: createPaymentSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePaymentSessionRequest"
+      responses:
+        "201":
+          description: Payment session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentSessionResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /webhooks/payments/{processor}:
+    post:
+      tags: [Webhooks]
+      summary: Receive payment webhook
+      description: Verifies payment processor signature and processes events idempotently.
+      security:
+        - webhookSignature: []
+      operationId: receivePaymentWebhook
+      parameters:
+        - name: processor
+          in: path
+          required: true
+          schema:
+            type: string
+            example: stripe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Webhook accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookAcceptedResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /admin/auth/login:
+    post:
+      tags: [Admin Auth]
+      summary: Admin login
+      security: []
+      operationId: adminLogin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /admin/providers:
+    get:
+      tags: [Admin Providers]
+      summary: List providers
+      operationId: adminListProviders
+      responses:
+        "200":
+          description: Provider list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Provider"
+    post:
+      tags: [Admin Providers]
+      summary: Create provider
+      operationId: adminCreateProvider
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertProviderRequest"
+      responses:
+        "201":
+          description: Provider created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProviderResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /admin/providers/{providerId}:
+    patch:
+      tags: [Admin Providers]
+      summary: Update provider
+      operationId: adminUpdateProvider
+      parameters:
+        - $ref: "#/components/parameters/ProviderId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertProviderRequest"
+      responses:
+        "200":
+          description: Provider updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProviderResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/products:
+    get:
+      tags: [Admin Products]
+      summary: List products
+      operationId: adminListProducts
+      parameters:
+        - name: providerId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Product list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Product"
+    post:
+      tags: [Admin Products]
+      summary: Create product
+      operationId: adminCreateProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertProductRequest"
+      responses:
+        "201":
+          description: Product created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+  /admin/products/{productId}:
+    patch:
+      tags: [Admin Products]
+      summary: Update product
+      operationId: adminUpdateProduct
+      parameters:
+        - $ref: "#/components/parameters/ProductId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertProductRequest"
+      responses:
+        "200":
+          description: Product updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+  /admin/price-imports:
+    post:
+      tags: [Admin Prices]
+      summary: Upload price table CSV
+      operationId: adminUploadPriceImport
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [providerId, file]
+              properties:
+                providerId:
+                  type: string
+                  format: uuid
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: Import uploaded and validated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PriceImportResponse"
+  /admin/price-imports/{priceImportId}/publish:
+    post:
+      tags: [Admin Prices]
+      summary: Publish validated price import
+      operationId: adminPublishPriceImport
+      parameters:
+        - name: priceImportId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Price import published
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PriceImportResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /admin/orders:
+    get:
+      tags: [Admin Orders]
+      summary: Search admin orders
+      operationId: adminSearchOrders
+      parameters:
+        - name: query
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/OrderStatus"
+        - name: providerId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Order search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminOrderListResponse"
+  /admin/orders/{orderId}:
+    get:
+      tags: [Admin Orders]
+      summary: Get admin order detail
+      operationId: adminGetOrder
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+      responses:
+        "200":
+          description: Admin order detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminOrderDetailResponse"
+  /admin/orders/{orderId}/certificates:
+    post:
+      tags: [Fulfilment]
+      summary: Upload order certificate
+      operationId: adminUploadCertificate
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [policyNumber, file]
+              properties:
+                policyNumber:
+                  type: string
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: Certificate uploaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CertificateResponse"
+  /admin/fulfilment-queue:
+    get:
+      tags: [Fulfilment]
+      summary: List orders awaiting fulfilment
+      operationId: adminGetFulfilmentQueue
+      parameters:
+        - name: providerId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: breachedOnly
+          in: query
+          required: false
+          schema:
+            type: boolean
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Fulfilment queue
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FulfilmentQueueResponse"
+  /agent/auth/login:
+    post:
+      tags: [Agents]
+      summary: Agent login
+      security: []
+      operationId: agentLogin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+  /agent/quotes:
+    get:
+      tags: [Agents]
+      summary: List agent quotes
+      operationId: agentListQuotes
+      responses:
+        "200":
+          description: Agent quotes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentQuoteListResponse"
+    post:
+      tags: [Agents]
+      summary: Create tracked agent quote
+      operationId: agentCreateQuote
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateQuoteRequest"
+      responses:
+        "201":
+          description: Agent quote created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentQuoteResponse"
+  /admin/reports/quote-funnel:
+    get:
+      tags: [Reports]
+      summary: Quote funnel report
+      operationId: adminQuoteFunnelReport
+      parameters:
+        - $ref: "#/components/parameters/FromDate"
+        - $ref: "#/components/parameters/ToDate"
+      responses:
+        "200":
+          description: Quote funnel metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuoteFunnelReportResponse"
+  /admin/reports/conversion:
+    get:
+      tags: [Reports]
+      summary: Conversion report
+      operationId: adminConversionReport
+      parameters:
+        - $ref: "#/components/parameters/FromDate"
+        - $ref: "#/components/parameters/ToDate"
+      responses:
+        "200":
+          description: Conversion metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversionReportResponse"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    webhookSignature:
+      type: apiKey
+      in: header
+      name: X-Webhook-Signature
+  parameters:
+    QuoteId:
+      name: quoteId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ApplicationId:
+      name: applicationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    OrderId:
+      name: orderId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ProviderId:
+      name: providerId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ProductId:
+      name: productId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Page:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: pageSize
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 25
+    FromDate:
+      name: from
+      in: query
+      required: true
+      schema:
+        type: string
+        format: date
+    ToDate:
+      name: to
+      in: query
+      required: true
+      schema:
+        type: string
+        format: date
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ValidationErrorResponse"
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              example: not_found
+            message:
+              type: string
+              example: Resource not found.
+            requestId:
+              type: string
+    ValidationErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, fields]
+          properties:
+            code:
+              type: string
+              example: validation_error
+            message:
+              type: string
+              example: One or more fields are invalid.
+            fields:
+              type: array
+              items:
+                type: object
+                required: [field, message]
+                properties:
+                  field:
+                    type: string
+                    example: policyEndDate
+                  message:
+                    type: string
+                    example: Policy end date must be after policy start date.
+    CoverType:
+      type: string
+      enum: [single, couple, single_parent_family, family]
+    SalesChannel:
+      type: string
+      enum: [direct, agent]
+    OrderStatus:
+      type: string
+      enum:
+        - quote_created
+        - application_started
+        - application_completed
+        - payment_pending
+        - payment_failed
+        - paid
+        - provider_submission_pending
+        - provider_submission_failed
+        - certificate_pending
+        - certificate_issued
+        - fulfilled
+        - refund_requested
+        - refunded
+        - cancelled
+    PaymentStatus:
+      type: string
+      enum: [created, pending, succeeded, failed, cancelled, refunded, partially_refunded]
+    ProviderStatus:
+      type: string
+      enum: [active, inactive]
+    ProductStatus:
+      type: string
+      enum: [active, inactive]
+    Money:
+      type: object
+      required: [amountMinorUnits, currency]
+      properties:
+        amountMinorUnits:
+          type: integer
+          example: 43800
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          example: AUD
+    CreateQuoteRequest:
+      type: object
+      required: [adults, children, policyStartDate, policyEndDate]
+      properties:
+        adults:
+          type: integer
+          enum: [1, 2]
+        children:
+          type: integer
+          minimum: 0
+          maximum: 10
+        policyStartDate:
+          type: string
+          format: date
+        policyEndDate:
+          type: string
+          format: date
+        sessionId:
+          type: string
+          description: Optional client session ID. Server may generate one if omitted.
+    Quote:
+      type: object
+      required: [id, adults, children, policyStartDate, policyEndDate, coverType, channel, expiresAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        adults:
+          type: integer
+        children:
+          type: integer
+        policyStartDate:
+          type: string
+          format: date
+        policyEndDate:
+          type: string
+          format: date
+        calculatedDurationDays:
+          type: integer
+        coverType:
+          $ref: "#/components/schemas/CoverType"
+        channel:
+          $ref: "#/components/schemas/SalesChannel"
+        agentId:
+          type: string
+          format: uuid
+          nullable: true
+        expiresAt:
+          type: string
+          format: date-time
+    QuoteResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/Quote"
+    QuoteResult:
+      type: object
+      required: [id, quoteId, provider, product, coverType, premium, fees, total, expiresAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        quoteId:
+          type: string
+          format: uuid
+        provider:
+          type: object
+          required: [id, code, name]
+          properties:
+            id:
+              type: string
+              format: uuid
+            code:
+              type: string
+            name:
+              type: string
+            logoUrl:
+              type: string
+              format: uri
+              nullable: true
+        product:
+          type: object
+          required: [id, code, name]
+          properties:
+            id:
+              type: string
+              format: uuid
+            code:
+              type: string
+            name:
+              type: string
+            keyInclusions:
+              type: array
+              items:
+                type: string
+            disclosureUrl:
+              type: string
+              format: uri
+              nullable: true
+            policyDocumentUrl:
+              type: string
+              format: uri
+              nullable: true
+        coverType:
+          $ref: "#/components/schemas/CoverType"
+        premium:
+          $ref: "#/components/schemas/Money"
+        fees:
+          $ref: "#/components/schemas/Money"
+        total:
+          $ref: "#/components/schemas/Money"
+        certificateDeliveryNote:
+          type: string
+          example: Certificate issued after payment confirmation.
+        expiresAt:
+          type: string
+          format: date-time
+    QuoteResultsResponse:
+      type: object
+      required: [quote, data]
+      properties:
+        quote:
+          $ref: "#/components/schemas/Quote"
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuoteResult"
+    CreateApplicationRequest:
+      type: object
+      required: [quoteId, selectedQuoteResultId]
+      properties:
+        quoteId:
+          type: string
+          format: uuid
+        selectedQuoteResultId:
+          type: string
+          format: uuid
+    UpdateApplicationRequest:
+      type: object
+      properties:
+        applicant:
+          $ref: "#/components/schemas/Applicant"
+        contact:
+          $ref: "#/components/schemas/Contact"
+        visaStudy:
+          $ref: "#/components/schemas/VisaStudy"
+        dependants:
+          type: array
+          items:
+            $ref: "#/components/schemas/Dependant"
+        consents:
+          type: array
+          items:
+            $ref: "#/components/schemas/ConsentAcceptance"
+    ApplicationResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/Application"
+    Application:
+      type: object
+      required: [id, quoteId, selectedQuoteResultId, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        quoteId:
+          type: string
+          format: uuid
+        selectedQuoteResultId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [draft, valid, invalid, submitted]
+        applicant:
+          $ref: "#/components/schemas/Applicant"
+        contact:
+          $ref: "#/components/schemas/Contact"
+        visaStudy:
+          $ref: "#/components/schemas/VisaStudy"
+        dependants:
+          type: array
+          items:
+            $ref: "#/components/schemas/Dependant"
+    Applicant:
+      type: object
+      properties:
+        firstName:
+          type: string
+        familyName:
+          type: string
+        dateOfBirth:
+          type: string
+          format: date
+        gender:
+          type: string
+        nationality:
+          type: string
+    Contact:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        addressLine1:
+          type: string
+        addressLine2:
+          type: string
+        city:
+          type: string
+        stateRegion:
+          type: string
+        postalCode:
+          type: string
+        country:
+          type: string
+    VisaStudy:
+      type: object
+      properties:
+        visaType:
+          type: string
+        courseName:
+          type: string
+        institutionName:
+          type: string
+        studentId:
+          type: string
+        courseStartDate:
+          type: string
+          format: date
+        courseEndDate:
+          type: string
+          format: date
+    Dependant:
+      type: object
+      required: [firstName, familyName, dateOfBirth]
+      properties:
+        dependantType:
+          type: string
+          enum: [adult, child]
+        firstName:
+          type: string
+        familyName:
+          type: string
+        dateOfBirth:
+          type: string
+          format: date
+        gender:
+          type: string
+        nationality:
+          type: string
+        relationshipToApplicant:
+          type: string
+    ConsentAcceptance:
+      type: object
+      required: [documentType, version, accepted]
+      properties:
+        documentType:
+          type: string
+          example: privacy_policy
+        version:
+          type: string
+          example: "2026-06-01"
+        accepted:
+          type: boolean
+    CreateOrderRequest:
+      type: object
+      required: [applicationId]
+      properties:
+        applicationId:
+          type: string
+          format: uuid
+    Order:
+      type: object
+      required: [id, orderReference, status, total, customerEmail]
+      properties:
+        id:
+          type: string
+          format: uuid
+        orderReference:
+          type: string
+          example: OSHC-20260601-000123
+        status:
+          $ref: "#/components/schemas/OrderStatus"
+        total:
+          $ref: "#/components/schemas/Money"
+        customerEmail:
+          type: string
+          format: email
+        providerName:
+          type: string
+        productName:
+          type: string
+        paidAt:
+          type: string
+          format: date-time
+          nullable: true
+    OrderResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/Order"
+    CreatePaymentSessionRequest:
+      type: object
+      required: [orderId]
+      properties:
+        orderId:
+          type: string
+          format: uuid
+    PaymentSessionResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [paymentId, clientSecret, amount]
+          properties:
+            paymentId:
+              type: string
+              format: uuid
+            clientSecret:
+              type: string
+              description: Gateway-safe client secret or equivalent token.
+            amount:
+              $ref: "#/components/schemas/Money"
+    WebhookAcceptedResponse:
+      type: object
+      required: [received]
+      properties:
+        received:
+          type: boolean
+          example: true
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+    AuthResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [accessToken, tokenType, expiresIn]
+          properties:
+            accessToken:
+              type: string
+            tokenType:
+              type: string
+              example: Bearer
+            expiresIn:
+              type: integer
+              example: 3600
+    Provider:
+      type: object
+      required: [id, code, name, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: "#/components/schemas/ProviderStatus"
+        logoUrl:
+          type: string
+          format: uri
+          nullable: true
+        disclosureUrl:
+          type: string
+          format: uri
+          nullable: true
+        productDisclosureUrl:
+          type: string
+          format: uri
+          nullable: true
+    UpsertProviderRequest:
+      type: object
+      required: [code, name, status]
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: "#/components/schemas/ProviderStatus"
+        logoFileRef:
+          type: string
+        disclosureUrl:
+          type: string
+          format: uri
+        productDisclosureUrl:
+          type: string
+          format: uri
+    ProviderResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/Provider"
+    Product:
+      type: object
+      required: [id, providerId, code, name, status, coverTypes]
+      properties:
+        id:
+          type: string
+          format: uuid
+        providerId:
+          type: string
+          format: uuid
+        code:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: "#/components/schemas/ProductStatus"
+        coverTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/CoverType"
+        disclosureUrl:
+          type: string
+          format: uri
+          nullable: true
+        policyDocumentUrl:
+          type: string
+          format: uri
+          nullable: true
+    UpsertProductRequest:
+      type: object
+      required: [providerId, code, name, status, coverTypes]
+      properties:
+        providerId:
+          type: string
+          format: uuid
+        code:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: "#/components/schemas/ProductStatus"
+        coverTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/CoverType"
+        disclosureUrl:
+          type: string
+          format: uri
+        policyDocumentUrl:
+          type: string
+          format: uri
+    ProductResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/Product"
+    PriceImportResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [id, status, validationSummary]
+          properties:
+            id:
+              type: string
+              format: uuid
+            status:
+              type: string
+              enum: [draft, validated, published, rejected, archived]
+            validationSummary:
+              type: object
+              properties:
+                totalRows:
+                  type: integer
+                validRows:
+                  type: integer
+                invalidRows:
+                  type: integer
+                errors:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      row:
+                        type: integer
+                      field:
+                        type: string
+                      message:
+                        type: string
+    AdminOrderListResponse:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminOrderSummary"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+    AdminOrderSummary:
+      type: object
+      required: [id, orderReference, status, customerEmail, total]
+      properties:
+        id:
+          type: string
+          format: uuid
+        orderReference:
+          type: string
+        status:
+          $ref: "#/components/schemas/OrderStatus"
+        customerEmail:
+          type: string
+          format: email
+        customerName:
+          type: string
+        providerName:
+          type: string
+        productName:
+          type: string
+        paymentStatus:
+          $ref: "#/components/schemas/PaymentStatus"
+        certificateStatus:
+          type: string
+          enum: [pending, issued, sent, send_failed, revoked]
+        total:
+          $ref: "#/components/schemas/Money"
+    AdminOrderDetailResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          properties:
+            order:
+              $ref: "#/components/schemas/AdminOrderSummary"
+            quote:
+              $ref: "#/components/schemas/Quote"
+            application:
+              $ref: "#/components/schemas/Application"
+            payments:
+              type: array
+              items:
+                type: object
+                additionalProperties: true
+            consents:
+              type: array
+              items:
+                type: object
+                additionalProperties: true
+            stateTransitions:
+              type: array
+              items:
+                type: object
+                additionalProperties: true
+            certificates:
+              type: array
+              items:
+                $ref: "#/components/schemas/Certificate"
+    Certificate:
+      type: object
+      required: [id, orderId, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        orderId:
+          type: string
+          format: uuid
+        policyNumber:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [pending, issued, sent, send_failed, revoked]
+        downloadUrl:
+          type: string
+          format: uri
+          nullable: true
+        issuedAt:
+          type: string
+          format: date-time
+          nullable: true
+        sentAt:
+          type: string
+          format: date-time
+          nullable: true
+    CertificateResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/Certificate"
+    FulfilmentQueueResponse:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              order:
+                $ref: "#/components/schemas/AdminOrderSummary"
+              ageHours:
+                type: number
+              breached:
+                type: boolean
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+    AgentQuoteResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [quote, shareUrl]
+          properties:
+            quote:
+              $ref: "#/components/schemas/Quote"
+            shareUrl:
+              type: string
+              format: uri
+    AgentQuoteListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              quote:
+                $ref: "#/components/schemas/Quote"
+              orderStatus:
+                $ref: "#/components/schemas/OrderStatus"
+              selectedProvider:
+                type: string
+                nullable: true
+              certificateStatus:
+                type: string
+                nullable: true
+    QuoteFunnelReportResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          properties:
+            quoteStarted:
+              type: integer
+            quoteSubmitted:
+              type: integer
+            quoteResultsViewed:
+              type: integer
+    ConversionReportResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          properties:
+            policySelected:
+              type: integer
+            applicationSubmitted:
+              type: integer
+            paymentStarted:
+              type: integer
+            paymentSucceeded:
+              type: integer
+            paymentFailed:
+              type: integer
+            quoteToPurchaseRate:
+              type: number
+    Pagination:
+      type: object
+      required: [page, pageSize, total]
+      properties:
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer

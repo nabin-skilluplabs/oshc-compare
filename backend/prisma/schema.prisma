@@ -1,0 +1,525 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model AdminUser {
+  id           String                 @id @default(uuid())
+  email        String                 @unique
+  fullName     String
+  role         String
+  passwordHash String?
+  status       String                 @default("active")
+  lastLoginAt  DateTime?
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+  auditLogs    AuditLog[]
+  transitions  OrderStateTransition[]
+  certificates Certificate[]
+}
+
+model Agent {
+  id                    String             @id @default(uuid())
+  agencyName            String?
+  fullName              String
+  email                 String             @unique
+  phone                 String?
+  status                String             @default("pending")
+  commissionProfileCode String?
+  approvedAt            DateTime?
+  suspendedAt           DateTime?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  quotes                Quote[]
+  orders                Order[]
+  auditLogs             AuditLog[]
+  commissionLedger      CommissionLedger[]
+}
+
+model Provider {
+  id                   String               @id @default(uuid())
+  code                 String               @unique
+  name                 String
+  logoFileRef          String?
+  status               String               @default("inactive")
+  websiteUrl           String?
+  disclosureUrl        String?
+  productDisclosureUrl String?
+  supportMetadata      String               @default("{}")
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  products             Product[]
+  priceTables          PriceTable[]
+  providerSubmissions  ProviderSubmission[]
+  certificates         Certificate[]
+  commissionRules      CommissionRule[]
+}
+
+model Product {
+  id                String             @id @default(uuid())
+  providerId        String
+  code              String
+  name              String
+  status            String             @default("inactive")
+  fulfilmentMode    String             @default("manual")
+  disclosureUrl     String?
+  policyDocumentUrl String?
+  keyInclusions     String             @default("[]")
+  metadata          String             @default("{}")
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  provider          Provider           @relation(fields: [providerId], references: [id])
+  coverTypes        ProductCoverType[]
+  priceRows         PriceRow[]
+  quoteResults      QuoteResult[]
+  commissionRules   CommissionRule[]
+
+  @@unique([providerId, code])
+  @@index([providerId])
+  @@index([status])
+}
+
+model ProductCoverType {
+  id        String   @id @default(uuid())
+  productId String
+  coverType String
+  createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, coverType])
+  @@index([coverType])
+}
+
+model PriceTable {
+  id                    String     @id @default(uuid())
+  providerId            String
+  version               Int
+  status                String     @default("draft")
+  effectiveFrom         DateTime
+  effectiveTo           DateTime?
+  sourceFileRef         String?
+  importedByAdminUserId String?
+  validationSummary     String     @default("{}")
+  publishedAt           DateTime?
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
+  provider              Provider   @relation(fields: [providerId], references: [id])
+  priceRows             PriceRow[]
+
+  @@unique([providerId, version])
+  @@index([providerId, status])
+}
+
+model PriceRow {
+  id                String     @id @default(uuid())
+  priceTableId      String
+  productId         String
+  coverType         String
+  durationDaysMin   Int
+  durationDaysMax   Int
+  premiumMinorUnits Int
+  feeMinorUnits     Int        @default(0)
+  currency          String     @default("AUD")
+  channel           String?
+  metadata          String     @default("{}")
+  createdAt         DateTime   @default(now())
+  priceTable        PriceTable @relation(fields: [priceTableId], references: [id], onDelete: Cascade)
+  product           Product    @relation(fields: [productId], references: [id])
+
+  @@index([productId, coverType, durationDaysMin, durationDaysMax, channel])
+  @@index([priceTableId])
+}
+
+model Quote {
+  id                     String        @id @default(uuid())
+  sessionId              String
+  agentId                String?
+  channel                String        @default("direct")
+  adults                 Int
+  children               Int
+  policyStartDate        DateTime
+  policyEndDate          DateTime
+  calculatedDurationDays Int
+  coverType              String
+  expiresAt              DateTime
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+  agent                  Agent?        @relation(fields: [agentId], references: [id])
+  quoteResults           QuoteResult[]
+  applications           Application[]
+
+  @@index([sessionId])
+  @@index([agentId])
+  @@index([createdAt])
+}
+
+model QuoteResult {
+  id                 String        @id @default(uuid())
+  quoteId            String
+  productId          String
+  providerSnapshot   String
+  productSnapshot    String
+  coverType          String
+  premiumMinorUnits  Int
+  feeMinorUnits      Int           @default(0)
+  totalMinorUnits    Int
+  currency           String        @default("AUD")
+  disclosureSnapshot String        @default("{}")
+  expiresAt          DateTime
+  createdAt          DateTime      @default(now())
+  quote              Quote         @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  product            Product       @relation(fields: [productId], references: [id])
+  applications       Application[]
+  orders             Order[]
+
+  @@index([quoteId])
+  @@index([productId])
+}
+
+model Application {
+  id                    String                 @id @default(uuid())
+  quoteId               String
+  selectedQuoteResultId String
+  status                String                 @default("draft")
+  applicantFirstName    String?
+  applicantFamilyName   String?
+  applicantDateOfBirth  DateTime?
+  applicantGender       String?
+  applicantNationality  String?
+  email                 String?
+  phone                 String?
+  addressLine1          String?
+  addressLine2          String?
+  city                  String?
+  stateRegion           String?
+  postalCode            String?
+  country               String?
+  visaType              String?
+  courseName            String?
+  institutionName       String?
+  studentId             String?
+  courseStartDate       DateTime?
+  courseEndDate         DateTime?
+  validationErrors      String                 @default("[]")
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  quote                 Quote                  @relation(fields: [quoteId], references: [id])
+  selectedQuoteResult   QuoteResult            @relation(fields: [selectedQuoteResultId], references: [id])
+  dependants            ApplicationDependant[]
+  orders                Order[]
+  consentRecords        ConsentRecord[]
+
+  @@index([quoteId])
+  @@index([email])
+  @@index([selectedQuoteResultId])
+}
+
+model ApplicationDependant {
+  id                      String      @id @default(uuid())
+  applicationId           String
+  dependantType           String
+  firstName               String
+  familyName              String
+  dateOfBirth             DateTime
+  gender                  String?
+  nationality             String?
+  relationshipToApplicant String?
+  createdAt               DateTime    @default(now())
+  updatedAt               DateTime    @updatedAt
+  application             Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+}
+
+model ConsentDocument {
+  id             String          @id @default(uuid())
+  documentType   String
+  version        String
+  title          String
+  url            String
+  isActive       Boolean         @default(false)
+  createdAt      DateTime        @default(now())
+  consentRecords ConsentRecord[]
+
+  @@unique([documentType, version])
+  @@index([documentType, isActive])
+}
+
+model ConsentRecord {
+  id                String          @id @default(uuid())
+  applicationId     String?
+  orderId           String?
+  consentDocumentId String
+  acceptedByEmail   String?
+  acceptedAt        DateTime        @default(now())
+  ipAddress         String?
+  userAgent         String?
+  metadata          String          @default("{}")
+  application       Application?    @relation(fields: [applicationId], references: [id])
+  order             Order?          @relation(fields: [orderId], references: [id])
+  consentDocument   ConsentDocument @relation(fields: [consentDocumentId], references: [id])
+
+  @@index([applicationId])
+  @@index([orderId])
+}
+
+model Order {
+  id               String                 @id @default(uuid())
+  orderReference   String                 @unique
+  applicationId    String
+  quoteResultId    String
+  agentId          String?
+  channel          String                 @default("direct")
+  status           String
+  totalMinorUnits  Int
+  currency         String                 @default("AUD")
+  customerEmail    String
+  customerFullName String?
+  paidAt           DateTime?
+  fulfilledAt      DateTime?
+  cancelledAt      DateTime?
+  refundedAt       DateTime?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  application      Application            @relation(fields: [applicationId], references: [id])
+  quoteResult      QuoteResult            @relation(fields: [quoteResultId], references: [id])
+  agent            Agent?                 @relation(fields: [agentId], references: [id])
+  stateTransitions OrderStateTransition[]
+  payments         Payment[]
+  submissions      ProviderSubmission[]
+  certificates     Certificate[]
+  emailLogs        EmailLog[]
+  supportRequests  SupportRequest[]
+  consentRecords   ConsentRecord[]
+  commissionLedger CommissionLedger[]
+  magicLinkTokens  MagicLinkToken[]
+
+  @@index([applicationId])
+  @@index([agentId])
+  @@index([status])
+  @@index([customerEmail])
+  @@index([createdAt])
+}
+
+model OrderStateTransition {
+  id               String     @id @default(uuid())
+  orderId          String
+  fromStatus       String?
+  toStatus         String
+  actorAdminUserId String?
+  actorType        String     @default("system")
+  reason           String?
+  metadata         String     @default("{}")
+  createdAt        DateTime   @default(now())
+  order            Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  actorAdminUser   AdminUser? @relation(fields: [actorAdminUserId], references: [id])
+
+  @@index([orderId, createdAt])
+}
+
+model Payment {
+  id                        String         @id @default(uuid())
+  orderId                   String
+  processor                 String
+  processorPaymentReference String?
+  status                    String         @default("created")
+  amountMinorUnits          Int
+  currency                  String         @default("AUD")
+  failureCode               String?
+  failureMessage            String?
+  createdAt                 DateTime       @default(now())
+  updatedAt                 DateTime       @updatedAt
+  succeededAt               DateTime?
+  failedAt                  DateTime?
+  order                     Order          @relation(fields: [orderId], references: [id])
+  paymentEvents             PaymentEvent[]
+
+  @@index([orderId])
+  @@index([processor, processorPaymentReference])
+}
+
+model PaymentEvent {
+  id               String    @id @default(uuid())
+  paymentId        String?
+  processor        String
+  processorEventId String
+  eventType        String
+  payload          String
+  processedAt      DateTime?
+  processingError  String?
+  createdAt        DateTime  @default(now())
+  payment          Payment?  @relation(fields: [paymentId], references: [id])
+
+  @@unique([processor, processorEventId])
+  @@index([paymentId])
+  @@index([eventType])
+}
+
+model ProviderSubmission {
+  id                String    @id @default(uuid())
+  orderId           String
+  providerId        String
+  status            String    @default("pending")
+  submissionMode    String    @default("manual")
+  externalReference String?
+  requestPayload    String?
+  responsePayload   String?
+  errorCode         String?
+  errorMessage      String?
+  submittedAt       DateTime?
+  completedAt       DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  order             Order     @relation(fields: [orderId], references: [id])
+  provider          Provider  @relation(fields: [providerId], references: [id])
+
+  @@index([orderId])
+  @@index([status])
+}
+
+model Certificate {
+  id                    String     @id @default(uuid())
+  orderId               String
+  providerId            String
+  policyNumber          String?
+  status                String     @default("pending")
+  fileRef               String?
+  fileName              String?
+  fileSizeBytes         Int?
+  issuedAt              DateTime?
+  sentAt                DateTime?
+  uploadedByAdminUserId String?
+  metadata              String     @default("{}")
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
+  order                 Order      @relation(fields: [orderId], references: [id])
+  provider              Provider   @relation(fields: [providerId], references: [id])
+  uploadedByAdminUser   AdminUser? @relation(fields: [uploadedByAdminUserId], references: [id])
+
+  @@index([orderId])
+  @@index([providerId, policyNumber])
+  @@index([status])
+}
+
+model EmailLog {
+  id                String    @id @default(uuid())
+  orderId           String?
+  recipientEmail    String
+  templateKey       String
+  status            String    @default("queued")
+  provider          String?
+  providerMessageId String?
+  subject           String?
+  errorMessage      String?
+  metadata          String    @default("{}")
+  createdAt         DateTime  @default(now())
+  sentAt            DateTime?
+  updatedAt         DateTime  @updatedAt
+  order             Order?    @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+  @@index([status])
+  @@index([recipientEmail])
+}
+
+model AuditLog {
+  id               String     @id @default(uuid())
+  actorAdminUserId String?
+  actorAgentId     String?
+  actorType        String
+  action           String
+  entityType       String
+  entityId         String?
+  beforeData       String?
+  afterData        String?
+  metadata         String     @default("{}")
+  createdAt        DateTime   @default(now())
+  actorAdminUser   AdminUser? @relation(fields: [actorAdminUserId], references: [id])
+  actorAgent       Agent?     @relation(fields: [actorAgentId], references: [id])
+
+  @@index([actorAdminUserId])
+  @@index([actorAgentId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+model MagicLinkToken {
+  id        String    @id @default(uuid())
+  orderId   String
+  email     String
+  tokenHash String    @unique
+  purpose   String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  order     Order     @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+  @@index([email])
+  @@index([expiresAt])
+}
+
+model SupportRequest {
+  id                  String    @id @default(uuid())
+  orderId             String?
+  requestType         String
+  status              String    @default("open")
+  customerEmail       String
+  subject             String?
+  description         String?
+  assignedAdminUserId String?
+  metadata            String    @default("{}")
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  resolvedAt          DateTime?
+  order               Order?    @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+  @@index([status])
+  @@index([requestType])
+}
+
+model CommissionRule {
+  id               String             @id @default(uuid())
+  ruleCode         String             @unique
+  providerId       String?
+  productId        String?
+  agentId          String?
+  commissionType   String
+  commissionValue  Float
+  effectiveFrom    DateTime
+  effectiveTo      DateTime?
+  status           String             @default("active")
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  provider         Provider?          @relation(fields: [providerId], references: [id])
+  product          Product?           @relation(fields: [productId], references: [id])
+  commissionLedger CommissionLedger[]
+
+  @@index([providerId, productId, agentId, effectiveFrom, effectiveTo])
+}
+
+model CommissionLedger {
+  id               String          @id @default(uuid())
+  orderId          String
+  agentId          String
+  commissionRuleId String?
+  amountMinorUnits Int
+  currency         String          @default("AUD")
+  status           String          @default("pending")
+  calculatedAt     DateTime        @default(now())
+  paidAt           DateTime?
+  reversedAt       DateTime?
+  metadata         String          @default("{}")
+  order            Order           @relation(fields: [orderId], references: [id])
+  agent            Agent           @relation(fields: [agentId], references: [id])
+  commissionRule   CommissionRule? @relation(fields: [commissionRuleId], references: [id])
+
+  @@index([orderId])
+  @@index([agentId])
+  @@index([status])
+}
