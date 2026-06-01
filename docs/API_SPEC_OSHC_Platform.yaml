@@ -8,12 +8,12 @@ info:
     This contract is intended for frontend/backend alignment, Swagger UI review, test generation,
     and implementation planning.
 servers:
+  - url: http://localhost:3000/api/v1
+    description: Local development backend
   - url: https://api.example.com/v1
     description: Production placeholder
   - url: https://staging-api.example.com/v1
     description: Staging placeholder
-  - url: http://localhost:3000/api/v1
-    description: Local development placeholder
 tags:
   - name: Public Quote
   - name: Results
