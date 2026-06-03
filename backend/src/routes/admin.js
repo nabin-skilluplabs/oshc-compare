@@ -42,7 +42,7 @@ function requireAdmin(req, res, next) {
   return requireAuth("admin")(req, res, next);
 }
 
-function mapProvider(provider) {
+export function mapProvider(provider) {
   return {
     id: provider.id,
     code: provider.code,
@@ -54,7 +54,7 @@ function mapProvider(provider) {
   };
 }
 
-function mapProduct(product) {
+export function mapProduct(product) {
   return {
     id: product.id,
     providerId: product.providerId,
@@ -67,7 +67,7 @@ function mapProduct(product) {
   };
 }
 
-function mapAdminOrderSummary(order) {
+export function mapAdminOrderSummary(order) {
   const quoteResult = order.quoteResult;
   const certificate = order.certificates?.[0];
   const payment = order.payments?.[0];
@@ -85,7 +85,7 @@ function mapAdminOrderSummary(order) {
   };
 }
 
-async function audit(req, action, entityType, entityId, afterData = undefined) {
+export async function audit(req, action, entityType, entityId, afterData = undefined) {
   await prisma.auditLog.create({
     data: {
       actorAdminUserId: req.auth?.subject?.id,
