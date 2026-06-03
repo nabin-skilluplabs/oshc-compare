@@ -11,7 +11,8 @@
     "prisma:seed": "node prisma/seed.js",
     "db:init": "sqlite3 prisma/dev.db \".read prisma/init.sql\"",
     "db:reset": "prisma migrate reset --force",
-    "smoke": "node src/smoke-test.js"
+    "smoke": "node src/smoke-test.js",
+    "test": "node --test test"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
@@ -25,7 +26,8 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "prisma": "^6.19.3"
+    "prisma": "^6.19.3",
+    "supertest": "^7.2.2"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
