@@ -15,8 +15,8 @@ function createPrismaMock(overrides = {}) {
 async function loadEmailService(prisma) {
   const previousKey = process.env.RESEND_API_KEY;
   process.env.RESEND_API_KEY = "";
-  const module = await esmock("../src/services/email-service.js", {
-    "../src/lib/prisma.js": { prisma },
+  const module = await esmock("../../src/services/email-service.js", {
+    "../../src/lib/prisma.js": { prisma },
   });
   process.env.RESEND_API_KEY = previousKey;
   return module;

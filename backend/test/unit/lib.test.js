@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { z } from "zod";
-import { asyncHandler } from "../src/lib/async-handler.js";
+import { asyncHandler } from "../../src/lib/async-handler.js";
 import {
   ApiError,
   errorHandler,
@@ -9,10 +9,10 @@ import {
   notFound,
   unauthorized,
   validationError,
-} from "../src/lib/errors.js";
-import { issueDemoToken, readDemoToken, requireAdminRole, requireAuth } from "../src/lib/auth.js";
-import { jsonArrayString, jsonParse, jsonString } from "../src/lib/json-field.js";
-import { parseDateOnly, toDateOnly, validate } from "../src/lib/validation.js";
+} from "../../src/lib/errors.js";
+import { issueDemoToken, readDemoToken, requireAdminRole, requireAuth } from "../../src/lib/auth.js";
+import { jsonArrayString, jsonParse, jsonString } from "../../src/lib/json-field.js";
+import { parseDateOnly, toDateOnly, validate } from "../../src/lib/validation.js";
 
 function createResponse() {
   return {

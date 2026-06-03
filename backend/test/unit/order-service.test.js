@@ -28,8 +28,8 @@ function createPrismaMock(overrides = {}) {
 }
 
 async function loadOrderService(prisma) {
-  return esmock("../src/services/order-service.js", {
-    "../src/lib/prisma.js": { prisma },
+  return esmock("../../src/services/order-service.js", {
+    "../../src/lib/prisma.js": { prisma },
   });
 }
 

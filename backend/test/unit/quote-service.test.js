@@ -13,8 +13,8 @@ function createPrismaMock(overrides = {}) {
 }
 
 async function loadQuoteService(prisma) {
-  return esmock("../src/services/quote-service.js", {
-    "../src/lib/prisma.js": { prisma },
+  return esmock("../../src/services/quote-service.js", {
+    "../../src/lib/prisma.js": { prisma },
   });
 }
 

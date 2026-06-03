@@ -21,8 +21,8 @@ function createPrismaMock(overrides = {}) {
 }
 
 async function loadPricingService(prisma) {
-  return esmock("../src/services/pricing-service.js", {
-    "../src/lib/prisma.js": { prisma },
+  return esmock("../../src/services/pricing-service.js", {
+    "../../src/lib/prisma.js": { prisma },
   });
 }
 

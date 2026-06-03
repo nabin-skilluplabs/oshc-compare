@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { mapAdminOrderSummary, mapProduct, mapProvider } from "../src/routes/admin.js";
-import { mapApplication, mapMoney, mapOrder, mapQuote, mapQuoteResult } from "../src/routes/public.js";
+import { mapAdminOrderSummary, mapProduct, mapProvider } from "../../src/routes/admin.js";
+import { mapApplication, mapMoney, mapOrder, mapQuote, mapQuoteResult } from "../../src/routes/public.js";
 
 describe("public route mapper unit functions", () => {
   it("maps money values", () => {
