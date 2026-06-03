@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import esmock from "esmock";
 
 async function loadAdminHelpers(prisma) {
-  return esmock("../../src/routes/admin.js", {
+  return esmock("../../src/routes/admin/helpers.js", {
     "../../src/lib/prisma.js": { prisma },
   });
 }
